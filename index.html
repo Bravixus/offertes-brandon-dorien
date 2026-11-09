@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offerte Vergelijker - Brandon & Dorien</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-12">
+
+    <!-- LOGIN / BEVEILIGINGSSCHERM -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
+            <div class="text-center mb-6">
+                <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">Toegang Beveiligen</h2>
+                <p class="text-sm text-slate-500 mt-1">Beantwoord de beveiligingsvraag om verder te gaan.</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Beveiligingsvraag:</label>
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium text-sm mb-3">
+                        Welke merk gevelsteen hebben wij?
+                    </div>
+                    <input type="text" id="secAnswer" required placeholder="Typ het antwoord..." 
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800">
+                    <p id="loginError" class="text-red-500 text-xs mt-1 hidden font-semibold">Onjuist antwoord. Probeer opnieuw.</p>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-200 shadow-md">
+                    Open App <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP APP CONTENT -->
+    <div id="appContent" class="hidden">
+        <!-- HEADER -->
+        <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 text-white p-2 rounded-lg text-lg">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-800 leading-tight">Offerte Vergelijker</h1>
+                        <p class="text-xs text-slate-500">Brandon & Dorien</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <!-- GEBRUIKER SWITCHER -->
+                    <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button id="btnBrandon" onclick="setUser('Brandon')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition">
+                            <i class="fa-solid fa-user mr-1"></i>Brandon
+                        </button>
+                        <button id="btnDorien" onclick="setUser('Dorien')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition">
+                            <i class="fa-solid fa-user mr-1"></i>Dorien
+                        </button>
+                    </div>
+
+                    <button onclick="logout()" title="Vergrendel app" class="text-slate-400 hover:text-red-500 p-2 text-lg">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTAINER -->
+        <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+            <!-- TOTAALOVERZICHT DASHBOARD -->
+            <div class="bg-gradient-to-r from-indigo-900 to-slate-800 text-white rounded-2xl p-6 shadow-lg">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span class="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Totaal Laagste Investeringen</span>
+                        <h2 class="text-3xl font-extrabold mt-1" id="totalLowestPrice">€ 0,00</h2>
+                    </div>
+                    <div class="bg-indigo-800/50 p-3 rounded-xl border border-indigo-700/50">
+                        <i class="fa-solid fa-calculator text-2xl text-indigo-300"></i>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-indigo-700/50 text-xs">
+                    <div>
+                        <span class="text-slate-400 block">Totaal Offertes:</span>
+                        <span class="font-bold text-sm" id="totalCount">0</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block">Actieve Categorieën:</span>
+                        <span class="font-bold text-sm" id="activeCategoryCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KNOP TOEVOEGEN -->
+            <div class="flex gap-3">
+                <button onclick="openModal()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Nieuwe Offerte Toevoegen
+                </button>
+                <button onclick="openCategoryModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl border border-slate-200 shadow-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-folder-plus"></i> Categorie
+                </button>
+            </div>
+
+            <!-- CATEGORIEËN & OFFERTES LIJST -->
+            <div id="categoriesList" class="space-y-6">
+                <!-- Dynamisch geladen -->
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: OFFERTE TOEVOEGEN/BEWERKEN -->
+    <div id="offerteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 class="text-lg font-bold text-slate-800" id="modalTitle">Offerte Toevoegen</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <form id="offerteForm" onsubmit="saveOfferte(event)" class="space-y-4">
+                <input type="hidden" id="offerteId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Categorie</label>
+                    <select id="offerteCategory" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                        <!-- Dynamisch gevuld -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Naam Firma / Bedrijf</label>
+                    <input type="text" id="offerteCompany" required placeholder="bijv. De Ramen Expert BV" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Totaalbedrag (€ incl. BTW)</label>
+                    <input type="number" step="0.01" id="offerteAmount" required placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Notities / Details (optioneel)</label>
+                    <textarea id="offerteNotes" rows="3" placeholder="bijv. Inclusief plaatsing, 10 jaar garantie..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50">Annuleren</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-sm">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CATEGORIE TOEVOEGEN -->
+    <div id="categoryModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 class="text-lg font-bold text-slate-800">Nieuwe Categorie</h3>
+                <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <form onsubmit="saveCategory(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Naam Categorie</label>
+                    <input type="text" id="newCategoryName" required placeholder="bijv. DAKWERKEN" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm uppercase">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeCategoryModal()" class="px-4 py-2 border text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50">Annuleren</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-sm">Toevoegen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGICA -->
+    <script>
+        // 1. FIREBASE CONFIGURATIE (JOUW EIGEN PROJECT)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDv0NvRKi6bSsjW3y3iYKrMDZn1s03tDMc",
+            authDomain: "offertes-brandon-dorien.firebaseapp.com",
+            projectId: "offertes-brandon-dorien",
+            storageBucket: "offertes-brandon-dorien.firebasestorage.app",
+            messagingSenderId: "49501607836",
+            appId: "1:49501607836:web:ab09905688ebcbe24c1a59"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. CONSTANTEN & STATE
+        const SHARED_ROOM_ID = "BrandonDorien2026";
+        const CORRECT_ANSWER = "flavius";
+        const DEFAULT_CATEGORIES = ["VLOER", "RAMEN", "KEUKEN", "CHAPE", "PLEISTERWERKEN"];
+        
+        let currentUser = localStorage.getItem('appUser') || 'Brandon';
+        let categories = [];
+        let offertes = [];
+
+        // 3. INIT & AUTHENTICATIE
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('isLoggedIn') === 'true') {
+                showApp();
+            }
+            setUser(currentUser);
+        });
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('secAnswer').value.trim().toLowerCase();
+            if (input === CORRECT_ANSWER) {
+                localStorage.setItem('isLoggedIn', 'true');
+                document.getElementById('loginError').classList.add('hidden');
+                showApp();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            location.reload();
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appContent').classList.remove('hidden');
+            setupRealtimeSync();
+        }
+
+        function setUser(user) {
+            currentUser = user;
+            localStorage.setItem('appUser', user);
+            
+            const btnB = document.getElementById('btnBrandon');
+            const btnD = document.getElementById('btnDorien');
+            
+            if (user === 'Brandon') {
+                btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
+                btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
+            } else {
+                btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
+                btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
+            }
+        }
+
+        // 4. FIRESTORE REALTIME LISTENERS
+        function setupRealtimeSync() {
+            // Luister naar Categorieën
+            db.collection('rooms').doc(SHARED_ROOM_ID).collection('categories')
+                .onSnapshot(snapshot => {
+                    const customCats = snapshot.docs.map(doc => doc.data().name);
+                    categories = Array.from(new Set([...DEFAULT_CATEGORIES, ...customCats]));
+                    updateCategorySelect();
+                    renderUI();
+                });
+
+            // Luister naar Offertes
+            db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes')
+                .onSnapshot(snapshot => {
+                    offertes = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    renderUI();
+                });
+        }
+
+        // 5. RENDER UI
+        function renderUI() {
+            const container = document.getElementById('categoriesList');
+            container.innerHTML = '';
+
+            let totalLowestSum = 0;
+            let activeCatCount = 0;
+
+            categories.forEach(cat => {
+                const catOffertes = offertes
+                    .filter(o => o.category === cat)
+                    .sort((a, b) => a.amount - b.amount); // Goedkoopste eerst
+
+                if (catOffertes.length > 0) {
+                    activeCatCount++;
+                    totalLowestSum += catOffertes[0].amount; // Tel goedkoopste mee in totaal
+                }
+
+                // Categorie Card
+                const catCard = document.createElement('div');
+                catCard.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden";
+                
+                let offertesHTML = '';
+                if (catOffertes.length === 0) {
+                    offertesHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Nog geen offertes toegevoegd in deze categorie.</div>`;
+                } else {
+                    offertesHTML = catOffertes.map((off, index) => {
+                        const isCheapest = index === 0 && catOffertes.length > 1;
+                        const diffWithCheapest = index > 0 ? (off.amount - catOffertes[0].amount) : 0;
+
+                        return `
+                            <div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${index === 0 ? 'bg-emerald-50/40' : ''}">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-800">${escapeHtml(off.company)}</span>
+                                        ${index === 0 ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-trophy mr-1"></i>Goedkoopste</span>` : ''}
+                                    </div>
+                                    <p class="text-xs text-slate-400">
+                                        Geplaatst op ${off.date} om ${off.time} door <span class="font-semibold text-slate-600">${escapeHtml(off.user)}</span>
+                                    </p>
+                                    ${off.notes ? `<p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${escapeHtml(off.notes)}</p>` : ''}
+                                </div>
+
+                                <div class="flex sm:flex-col items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+                                    <div class="text-right">
+                                        <span class="text-lg font-extrabold ${index === 0 ? 'text-emerald-600' : 'text-slate-800'}">
+                                            € ${formatPrice(off.amount)}
+                                        </span>
+                                        ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
+                                    </div>
+                                    <div class="flex gap-2 mt-1">
+                                        <button onclick="editOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button>
+                                        <button onclick="deleteOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                catCard.innerHTML = `
+                    <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-sm text-slate-700 tracking-wide"><i class="fa-solid fa-folder text-indigo-500 mr-2"></i>${cat}</h3>
+                        <span class="text-xs font-semibold text-slate-400 bg-white px-2 py-1 rounded border">${catOffertes.length} offertes</span>
+                    </div>
+                    <div class="divide-y border-slate-100">
+                        ${offertesHTML}
+                    </div>
+                `;
+                container.appendChild(catCard);
+            });
+
+            // Update Totalen Dashboard
+            document.getElementById('totalLowestPrice').textContent = `€ ${formatPrice(totalLowestSum)}`;
+            document.getElementById('totalCount').textContent = offertes.length;
+            document.getElementById('activeCategoryCount').textContent = activeCatCount;
+        }
+
+        // 6. ACTIES & MODALS
+        function updateCategorySelect() {
+            const select = document.getElementById('offerteCategory');
+            select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function openModal() {
+            document.getElementById('offerteForm').reset();
+            document.getElementById('offerteId').value = '';
+            document.getElementById('modalTitle').textContent = 'Offerte Toevoegen';
+            document.getElementById('offerteModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('offerteModal').classList.add('hidden');
+        }
+
+        function openCategoryModal() {
+            document.getElementById('newCategoryName').value = '';
+            document.getElementById('categoryModal').classList.remove('hidden');
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+
+        function saveOfferte(e) {
+            e.preventDefault();
+            const id = document.getElementById('offerteId').value;
+            const category = document.getElementById('offerteCategory').value;
+            const company = document.getElementById('offerteCompany').value.trim();
+            const amount = parseFloat(document.getElementById('offerteAmount').value);
+            const notes = document.getElementById('offerteNotes').value.trim();
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('nl-BE');
+            const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+
+            const data = {
+                category,
+                company,
+                amount,
+                notes,
+                user: currentUser,
+                date: dateStr,
+                time: timeStr,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (id) {
+                db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(id).update(data);
+            } else {
+                db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').add(data);
+            }
+
+            closeModal();
+        }
+
+        function editOfferte(id) {
+            const off = offertes.find(o => o.id === id);
+            if (!off) return;
+
+            document.getElementById('offerteId').value = off.id;
+            document.getElementById('offerteCategory').value = off.category;
+            document.getElementById('offerteCompany').value = off.company;
+            document.getElementById('offerteAmount').value = off.amount;
+            document.getElementById('offerteNotes').value = off.notes || '';
+            document.getElementById('modalTitle').textContent = 'Offerte Bewerken';
+            document.getElementById('offerteModal').classList.remove('hidden');
+        }
+
+        function deleteOfferte(id) {
+            if (confirm('Weet je zeker dat je deze offerte wilt verwijderen?')) {
+                db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(id).delete();
+            }
+        }
+
+        function saveCategory(e) {
+            e.preventDefault();
+            const name = document.getElementById('newCategoryName').value.trim().toUpperCase();
+            if (name) {
+                db.collection('rooms').doc(SHARED_ROOM_ID).collection('categories').add({ name });
+                closeCategoryModal();
+            }
+        }
+
+        // HELPERS
+        function formatPrice(val) {
+            return val.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
