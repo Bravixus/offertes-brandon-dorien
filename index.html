@@ -16,7 +16,7 @@
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-12">
 
     <!-- LOGIN / BEVEILIGINGSSCHERM -->
-    <div id="loginScreen" class="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-4">
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
             <div class="text-center mb-6">
                 <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
@@ -158,9 +158,18 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Totaalbedrag (€ incl. BTW - optioneel indien lopend)</label>
-                    <input type="number" step="0.01" id="offerteAmount" placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Totaalbedrag (€)</label>
+                        <input type="number" step="0.01" id="offerteAmount" placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">BTW Optie</label>
+                        <select id="offerteBtwType" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                            <option value="Incl. BTW">Incl. BTW</option>
+                            <option value="Excl. BTW">Excl. BTW</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
@@ -220,9 +229,9 @@
         let offertes = [];
 
         window.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('isLoggedIn') === 'true') {
-                showApp();
-            }
+            // Zorg dat inlogscherm altijd eerst verschijnt bij verse start
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('appContent').classList.add('hidden');
             setUser(currentUser);
         });
 
@@ -230,7 +239,6 @@
             e.preventDefault();
             const input = document.getElementById('secAnswer').value.trim().toLowerCase();
             if (input === 'flavius') {
-                localStorage.setItem('isLoggedIn', 'true');
                 document.getElementById('loginError').classList.add('hidden');
                 showApp();
             } else {
@@ -239,7 +247,6 @@
         }
 
         function logout() {
-            localStorage.removeItem('isLoggedIn');
             location.reload();
         }
 
@@ -325,6 +332,8 @@
                             statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-flag-checkered mr-1"></i>Gekozen / Afgerond</span>`;
                         }
 
+                        const btwText = off.btwType || 'Incl. BTW';
+
                         return `
                             <div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${isCheapest ? 'bg-emerald-50/40' : ''}">
                                 <div class="space-y-1">
@@ -343,7 +352,7 @@
                                 <div class="flex sm:flex-col items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
                                     <div class="text-right">
                                         ${hasAmount 
-                                            ? `<span class="text-lg font-extrabold ${isCheapest ? 'text-emerald-600' : 'text-slate-800'}">€ ${formatPrice(off.amount)}</span>` 
+                                            ? `<span class="text-lg font-extrabold ${isCheapest ? 'text-emerald-600' : 'text-slate-800'}">€ ${formatPrice(off.amount)}</span> <span class="text-[10px] text-slate-500 block font-normal">(${btwText})</span>` 
                                             : `<span class="text-xs font-semibold text-slate-400 italic">Prijs nog onbekend</span>`
                                         }
                                         ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
@@ -385,6 +394,7 @@
             document.getElementById('offerteId').value = '';
             document.getElementById('modalTitle').textContent = 'Offerte / Aanvraag Toevoegen';
             document.getElementById('offerteMailDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('offerteBtwType').value = 'Incl. BTW';
             document.getElementById('offerteModal').classList.remove('hidden');
         }
 
@@ -410,6 +420,7 @@
             const mailDate = document.getElementById('offerteMailDate').value;
             const rawAmount = document.getElementById('offerteAmount').value;
             const amount = rawAmount ? parseFloat(rawAmount) : null;
+            const btwType = document.getElementById('offerteBtwType').value;
             const notes = document.getElementById('offerteNotes').value.trim();
 
             const now = new Date();
@@ -422,6 +433,7 @@
                 status,
                 mailDate: mailDate ? mailDate.split('-').reverse().join('/') : '',
                 amount,
+                btwType,
                 notes,
                 user: currentUser,
                 date: dateStr,
@@ -446,6 +458,7 @@
             document.getElementById('offerteCategory').value = off.category;
             document.getElementById('offerteCompany').value = off.company;
             document.getElementById('offerteStatus').value = off.status || 'Lopend';
+            document.getElementById('offerteBtwType').value = off.btwType || 'Incl. BTW';
             
             if (off.mailDate && off.mailDate.includes('/')) {
                 const parts = off.mailDate.split('/');
