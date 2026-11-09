@@ -153,23 +153,28 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mail uitgestuurd op</label>
-                        <input type="date" id="offerteMailDate" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Totaalbedrag (€)</label>
-                        <input type="number" step="0.01" id="offerteAmount" placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
-                    </div>
-                    <div>
                         <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">BTW Optie</label>
                         <select id="offerteBtwType" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
                             <option value="Incl. BTW">Incl. BTW</option>
                             <option value="Excl. BTW">Excl. BTW</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mail uitgestuurd op</label>
+                        <input type="date" id="offerteMailDate" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Antwoord/Reactie op</label>
+                        <input type="date" id="offerteReplyDate" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Totaalbedrag (€)</label>
+                    <input type="number" step="0.01" id="offerteAmount" placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
                 </div>
 
                 <div>
@@ -229,7 +234,6 @@
         let offertes = [];
 
         window.addEventListener('DOMContentLoaded', () => {
-            // Zorg dat inlogscherm altijd eerst verschijnt bij verse start
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('appContent').classList.add('hidden');
             setUser(currentUser);
@@ -343,7 +347,8 @@
                                         ${isCheapest ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-trophy mr-1"></i>Goedkoopste</span>` : ''}
                                     </div>
                                     <p class="text-xs text-slate-400">
-                                        ${off.mailDate ? `<span class="text-indigo-600 font-medium mr-2"><i class="fa-regular fa-envelope mr-1"></i>Gemaild op: ${off.mailDate}</span>` : ''}
+                                        ${off.mailDate ? `<span class="text-indigo-600 font-medium mr-2"><i class="fa-regular fa-paper-plane mr-1"></i>Gemaild: ${off.mailDate}</span>` : ''}
+                                        ${off.replyDate ? `<span class="text-emerald-600 font-medium mr-2"><i class="fa-regular fa-envelope-open mr-1"></i>Antwoord: ${off.replyDate}</span>` : ''}
                                         Toegevoegd door <span class="font-semibold text-slate-600">${escapeHtml(off.user)}</span>
                                     </p>
                                     ${off.notes ? `<p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${escapeHtml(off.notes)}</p>` : ''}
@@ -394,6 +399,7 @@
             document.getElementById('offerteId').value = '';
             document.getElementById('modalTitle').textContent = 'Offerte / Aanvraag Toevoegen';
             document.getElementById('offerteMailDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('offerteReplyDate').value = '';
             document.getElementById('offerteBtwType').value = 'Incl. BTW';
             document.getElementById('offerteModal').classList.remove('hidden');
         }
@@ -418,6 +424,7 @@
             const company = document.getElementById('offerteCompany').value.trim();
             const status = document.getElementById('offerteStatus').value;
             const mailDate = document.getElementById('offerteMailDate').value;
+            const replyDate = document.getElementById('offerteReplyDate').value;
             const rawAmount = document.getElementById('offerteAmount').value;
             const amount = rawAmount ? parseFloat(rawAmount) : null;
             const btwType = document.getElementById('offerteBtwType').value;
@@ -432,6 +439,7 @@
                 company,
                 status,
                 mailDate: mailDate ? mailDate.split('-').reverse().join('/') : '',
+                replyDate: replyDate ? replyDate.split('-').reverse().join('/') : '',
                 amount,
                 btwType,
                 notes,
@@ -465,6 +473,13 @@
                 document.getElementById('offerteMailDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
             } else {
                 document.getElementById('offerteMailDate').value = '';
+            }
+
+            if (off.replyDate && off.replyDate.includes('/')) {
+                const parts = off.replyDate.split('/');
+                document.getElementById('offerteReplyDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            } else {
+                document.getElementById('offerteReplyDate').value = '';
             }
 
             document.getElementById('offerteAmount').value = off.amount || '';
