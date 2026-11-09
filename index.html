@@ -189,9 +189,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Bedrag (€)</label>
-                    <input type="number" step="0.01" id="offerteAmount" placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
-                    <p class="text-[11px] text-slate-400 mt-1">Bij "Excl. BTW" wordt automatisch 21% BTW opgeteld voor het totaaloverzicht.</p>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Bedrag (€ - Optioneel)</label>
+                    <input type="number" step="0.01" id="offerteAmount" placeholder="Laat leeg indien nog geen prijs bekend" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    <p class="text-[11px] text-slate-400 mt-1">Bij "Excl. BTW" wordt automatisch 21% BTW opgeteld zodra je een bedrag invult.</p>
                 </div>
 
                 <div>
@@ -312,7 +312,6 @@
                 });
         }
 
-        // Berekent incl BTW bedrag (21% als Excl BTW gekozen is)
         function getInclBtwAmount(off) {
             if (!off.amount || off.amount <= 0) return 0;
             if (off.btwType === 'Excl. BTW') {
@@ -334,7 +333,6 @@
             categories.forEach(cat => {
                 let catOffertes = offertes.filter(o => o.category === cat);
 
-                // Filteren op zoekopdracht en status
                 if (searchVal) {
                     catOffertes = catOffertes.filter(o => 
                         (o.company && o.company.toLowerCase().includes(searchVal)) || 
@@ -346,8 +344,13 @@
                     catOffertes = catOffertes.filter(o => o.status === statusFilter);
                 }
 
-                // Sorteren op Incl. BTW prijs (goedkoopste bovenaan)
-                catOffertes.sort((a, b) => (getInclBtwAmount(a) || Infinity) - (getInclBtwAmount(b) || Infinity));
+                catOffertes.sort((a, b) => {
+                    const priceA = getInclBtwAmount(a);
+                    const priceB = getInclBtwAmount(b);
+                    if (priceA === 0) return 1;
+                    if (priceB === 0) return -1;
+                    return priceA - priceB;
+                });
 
                 const validAmounts = catOffertes.filter(o => getInclBtwAmount(o) > 0);
 
@@ -361,7 +364,7 @@
                 
                 let offertesHTML = '';
                 if (catOffertes.length === 0) {
-                    offertesHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Geen offertes gevonden.</div>`;
+                    offertesHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Geen offertes of aanvragen gevonden.</div>`;
                 } else {
                     offertesHTML = catOffertes.map((off) => {
                         const hasAmount = off.amount && off.amount > 0;
