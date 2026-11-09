@@ -83,7 +83,7 @@
             <div class="bg-gradient-to-r from-indigo-900 to-slate-800 text-white rounded-2xl p-6 shadow-lg">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <span class="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Totaal Laagste Investeringen</span>
+                        <span class="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Totaal Laagste Investeringen (Incl. BTW)</span>
                         <h2 class="text-3xl font-extrabold mt-1" id="totalLowestPrice">€ 0,00</h2>
                     </div>
                     <div class="bg-indigo-800/50 p-3 rounded-xl border border-indigo-700/50">
@@ -99,6 +99,22 @@
                         <span class="text-slate-400 block">Actieve Categorieën:</span>
                         <span class="font-bold text-sm" id="activeCategoryCount">0</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- ZOEK & FILTERBAR -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="renderUI()" placeholder="Zoek op firma of notitie..." class="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                </div>
+                <div class="w-full sm:w-48">
+                    <select id="statusFilter" onchange="renderUI()" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                        <option value="ALLE">Alle Statussen</option>
+                        <option value="Lopend">🟡 Lopend</option>
+                        <option value="Reactie ontvangen">🟢 Reactie ontvangen</option>
+                        <option value="Afgerond">🔵 Afgerond / Gekozen</option>
+                    </select>
                 </div>
             </div>
 
@@ -154,9 +170,9 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">BTW Optie</label>
-                        <select id="offerteBtwType" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                        <select id="offerteBtwType" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
+                            <option value="Excl. BTW">Excl. BTW (+21% berekenen)</option>
                             <option value="Incl. BTW">Incl. BTW</option>
-                            <option value="Excl. BTW">Excl. BTW</option>
                         </select>
                     </div>
                 </div>
@@ -173,8 +189,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Totaalbedrag (€)</label>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Bedrag (€)</label>
                     <input type="number" step="0.01" id="offerteAmount" placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    <p class="text-[11px] text-slate-400 mt-1">Bij "Excl. BTW" wordt automatisch 21% BTW opgeteld voor het totaaloverzicht.</p>
                 </div>
 
                 <div>
@@ -295,23 +312,48 @@
                 });
         }
 
+        // Berekent incl BTW bedrag (21% als Excl BTW gekozen is)
+        function getInclBtwAmount(off) {
+            if (!off.amount || off.amount <= 0) return 0;
+            if (off.btwType === 'Excl. BTW') {
+                return off.amount * 1.21;
+            }
+            return off.amount;
+        }
+
         function renderUI() {
             const container = document.getElementById('categoriesList');
             container.innerHTML = '';
+
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
 
             let totalLowestSum = 0;
             let activeCatCount = 0;
 
             categories.forEach(cat => {
-                const catOffertes = offertes
-                    .filter(o => o.category === cat)
-                    .sort((a, b) => (a.amount || Infinity) - (b.amount || Infinity));
+                let catOffertes = offertes.filter(o => o.category === cat);
 
-                const validAmounts = catOffertes.filter(o => o.amount && o.amount > 0);
+                // Filteren op zoekopdracht en status
+                if (searchVal) {
+                    catOffertes = catOffertes.filter(o => 
+                        (o.company && o.company.toLowerCase().includes(searchVal)) || 
+                        (o.notes && o.notes.toLowerCase().includes(searchVal))
+                    );
+                }
+
+                if (statusFilter !== 'ALLE') {
+                    catOffertes = catOffertes.filter(o => o.status === statusFilter);
+                }
+
+                // Sorteren op Incl. BTW prijs (goedkoopste bovenaan)
+                catOffertes.sort((a, b) => (getInclBtwAmount(a) || Infinity) - (getInclBtwAmount(b) || Infinity));
+
+                const validAmounts = catOffertes.filter(o => getInclBtwAmount(o) > 0);
 
                 if (validAmounts.length > 0) {
                     activeCatCount++;
-                    totalLowestSum += validAmounts[0].amount;
+                    totalLowestSum += getInclBtwAmount(validAmounts[0]);
                 }
 
                 const catCard = document.createElement('div');
@@ -319,13 +361,16 @@
                 
                 let offertesHTML = '';
                 if (catOffertes.length === 0) {
-                    offertesHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Nog geen offertes of mailaanvragen in deze categorie.</div>`;
+                    offertesHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Geen offertes gevonden.</div>`;
                 } else {
-                    offertesHTML = catOffertes.map((off, index) => {
+                    offertesHTML = catOffertes.map((off) => {
                         const hasAmount = off.amount && off.amount > 0;
-                        const isCheapest = hasAmount && validAmounts.length > 1 && off.amount === validAmounts[0].amount;
-                        const diffWithCheapest = (hasAmount && validAmounts.length > 0 && off.amount > validAmounts[0].amount) 
-                            ? (off.amount - validAmounts[0].amount) : 0;
+                        const inclBtw = getInclBtwAmount(off);
+                        const lowestInclBtw = validAmounts.length > 0 ? getInclBtwAmount(validAmounts[0]) : 0;
+
+                        const isCheapest = hasAmount && validAmounts.length > 1 && inclBtw === lowestInclBtw;
+                        const diffWithCheapest = (hasAmount && validAmounts.length > 0 && inclBtw > lowestInclBtw) 
+                            ? (inclBtw - lowestInclBtw) : 0;
 
                         let statusBadge = '';
                         if (off.status === 'Lopend') {
@@ -336,7 +381,7 @@
                             statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-flag-checkered mr-1"></i>Gekozen / Afgerond</span>`;
                         }
 
-                        const btwText = off.btwType || 'Incl. BTW';
+                        const isExcl = off.btwType === 'Excl. BTW';
 
                         return `
                             <div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${isCheapest ? 'bg-emerald-50/40' : ''}">
@@ -357,7 +402,10 @@
                                 <div class="flex sm:flex-col items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
                                     <div class="text-right">
                                         ${hasAmount 
-                                            ? `<span class="text-lg font-extrabold ${isCheapest ? 'text-emerald-600' : 'text-slate-800'}">€ ${formatPrice(off.amount)}</span> <span class="text-[10px] text-slate-500 block font-normal">(${btwText})</span>` 
+                                            ? `
+                                                <div class="text-lg font-extrabold ${isCheapest ? 'text-emerald-600' : 'text-slate-800'}">€ ${formatPrice(inclBtw)} <span class="text-[10px] font-normal text-slate-500">(Incl. BTW)</span></div>
+                                                ${isExcl ? `<div class="text-xs text-slate-400">€ ${formatPrice(off.amount)} (Excl. BTW)</div>` : ''}
+                                              ` 
                                             : `<span class="text-xs font-semibold text-slate-400 italic">Prijs nog onbekend</span>`
                                         }
                                         ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
@@ -400,7 +448,7 @@
             document.getElementById('modalTitle').textContent = 'Offerte / Aanvraag Toevoegen';
             document.getElementById('offerteMailDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('offerteReplyDate').value = '';
-            document.getElementById('offerteBtwType').value = 'Incl. BTW';
+            document.getElementById('offerteBtwType').value = 'Excl. BTW';
             document.getElementById('offerteModal').classList.remove('hidden');
         }
 
@@ -466,7 +514,7 @@
             document.getElementById('offerteCategory').value = off.category;
             document.getElementById('offerteCompany').value = off.company;
             document.getElementById('offerteStatus').value = off.status || 'Lopend';
-            document.getElementById('offerteBtwType').value = off.btwType || 'Incl. BTW';
+            document.getElementById('offerteBtwType').value = off.btwType || 'Excl. BTW';
             
             if (off.mailDate && off.mailDate.includes('/')) {
                 const parts = off.mailDate.split('/');
