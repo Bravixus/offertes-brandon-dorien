@@ -387,7 +387,6 @@
             document.getElementById('offerteForm').reset();
             document.getElementById('offerteId').value = '';
             document.getElementById('modalTitle').textContent = 'Offerte / Aanvraag Toevoegen';
-            // Standaard datum van vandaag invullen voor mail
             document.getElementById('offerteMailDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('offerteModal').classList.remove('hidden');
         }
@@ -451,7 +450,6 @@
             document.getElementById('offerteCompany').value = off.company;
             document.getElementById('offerteStatus').value = off.status || 'Lopend';
             
-            // Datum omzetten naar YYYY-MM-DD voor de input
             if (off.mailDate && off.mailDate.includes('/')) {
                 const parts = off.mailDate.split('/');
                 document.getElementById('offerteMailDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
