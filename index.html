@@ -15,8 +15,8 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-12">
 
-    <!-- LOGIN / BEVEILIGINGSSCHERM (VERBORGEN) -->
-    <div id="loginScreen" class="fixed inset-0 bg-slate-900/95 z-50 hidden flex items-center justify-center p-4">
+    <!-- LOGIN / BEVEILIGINGSSCHERM -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
             <div class="text-center mb-6">
                 <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
@@ -26,7 +26,7 @@
                 <p class="text-sm text-slate-500 mt-1">Beantwoord de beveiligingsvraag om verder te gaan.</p>
             </div>
             
-            <form id="loginForm" class="space-y-4">
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-1">Beveiligingsvraag:</label>
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium text-sm mb-3">
@@ -44,7 +44,7 @@
     </div>
 
     <!-- MAIN APP CONTENT -->
-    <div id="appContent">
+    <div id="appContent" class="hidden">
         <!-- HEADER -->
         <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -68,8 +68,8 @@
                         </button>
                     </div>
 
-                    <button onclick="logout()" title="Herladen" class="text-slate-400 hover:text-red-500 p-2 text-lg">
-                        <i class="fa-solid fa-rotate-right"></i>
+                    <button onclick="logout()" title="Vergrendel app" class="text-slate-400 hover:text-red-500 p-2 text-lg">
+                        <i class="fa-solid fa-right-from-bracket"></i>
                     </button>
                 </div>
             </div>
@@ -217,63 +217,6 @@
         </div>
     </div>
 
-    <!-- MODAL: DETAILVENSTER & GEDEELDE NOTITIES -->
-    <div id="detailViewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-                <div>
-                    <span id="detailViewCategory" class="text-xs font-bold text-indigo-600 uppercase tracking-wider">CATEGORIE</span>
-                    <h3 id="detailViewCompany" class="text-xl font-bold text-slate-800">Bedrijfsnaam</h3>
-                </div>
-                <button onclick="closeDetailViewModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="space-y-4 text-sm">
-                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div>
-                        <span class="text-xs text-slate-400 block">Status:</span>
-                        <span id="detailViewStatus" class="font-semibold text-slate-700">--</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-400 block">Prijs (Incl. BTW):</span>
-                        <span id="detailViewPrice" class="font-bold text-indigo-600">--</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-400 block">Mail Uitgestuurd:</span>
-                        <span id="detailViewMailDate" class="font-medium text-slate-600">--</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-400 block">Reactie Ontvangen:</span>
-                        <span id="detailViewReplyDate" class="font-medium text-slate-600">--</span>
-                    </div>
-                </div>
-
-                <div>
-                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Beschrijving:</span>
-                    <p id="detailViewDesc" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">--</p>
-                </div>
-
-                <div class="pt-3 border-t border-slate-100">
-                    <h4 class="text-sm font-bold text-slate-800 mb-2 flex items-center justify-between">
-                        <span><i class="fa-solid fa-comments text-indigo-500 mr-2"></i>Gedeelde Notities Logboek</span>
-                        <span class="text-[10px] text-slate-400 font-normal">(Brandon & Dorien)</span>
-                    </h4>
-
-                    <div id="detailCommentsList" class="space-y-2 mb-3 max-h-48 overflow-y-auto pr-1"></div>
-
-                    <div class="flex gap-2">
-                        <input type="text" id="newCommentInput" placeholder="Typ een opmerking..." class="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <button onclick="addComment()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- JAVASCRIPT LOGICA -->
     <script>
         const firebaseConfig = {
@@ -294,15 +237,32 @@
         let currentUser = localStorage.getItem('appUser') || 'Brandon';
         let categories = [];
         let offertes = [];
-        let activeDetailOfferteId = null;
 
-        document.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('appContent').classList.add('hidden');
             setUser(currentUser);
-            setupRealtimeSync();
         });
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('secAnswer').value.trim().toLowerCase();
+            if (input === 'flavius') {
+                document.getElementById('loginError').classList.add('hidden');
+                showApp();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
 
         function logout() {
             location.reload();
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appContent').classList.remove('hidden');
+            setupRealtimeSync();
         }
 
         function setUser(user) {
@@ -313,11 +273,11 @@
             const btnD = document.getElementById('btnDorien');
             
             if (user === 'Brandon') {
-                if (btnB) btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
-                if (btnD) btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
+                btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
+                btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
             } else {
-                if (btnD) btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
-                if (btnB) btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
+                btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
+                btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
             }
         }
 
@@ -337,10 +297,6 @@
                         ...doc.data()
                     }));
                     renderUI();
-
-                    if (activeDetailOfferteId) {
-                        openDetailViewModal(activeDetailOfferteId);
-                    }
                 });
         }
 
@@ -354,14 +310,10 @@
 
         function renderUI() {
             const container = document.getElementById('categoriesList');
-            if (!container) return;
             container.innerHTML = '';
 
-            const searchInput = document.getElementById('searchInput');
-            const statusFilterInput = document.getElementById('statusFilter');
-
-            const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
-            const statusFilter = statusFilterInput ? statusFilterInput.value : 'ALLE';
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
 
             let totalLowestSum = 0;
             let activeCatCount = 0;
@@ -421,7 +373,6 @@
                         }
 
                         const isExcl = off.btwType === 'Excl. BTW';
-                        const commentCount = off.comments ? off.comments.length : 0;
 
                         return `
                             <div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${isCheapest ? 'bg-emerald-50/40' : ''}">
@@ -450,14 +401,9 @@
                                         }
                                         ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
                                     </div>
-                                    <div class="flex gap-2 mt-1 items-center">
-                                        <button onclick="openDetailViewModal('${off.id}')" title="Bekijk details & notities" class="px-2.5 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
-                                            <i class="fa-solid fa-comments"></i>
-                                            <span>${commentCount}</span>
-                                        </button>
-
-                                        <button onclick="editOfferte('${off.id}')" title="Bewerken" class="text-xs text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen"></i></button>
-                                        <button onclick="deleteOfferte('${off.id}')" title="Verwijderen" class="text-xs text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                                    <div class="flex gap-2 mt-1">
+                                        <button onclick="editOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button>
+                                        <button onclick="deleteOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -477,20 +423,14 @@
                 container.appendChild(catCard);
             });
 
-            const totalLowestElem = document.getElementById('totalLowestPrice');
-            const totalCountElem = document.getElementById('totalCount');
-            const activeCatElem = document.getElementById('activeCategoryCount');
-
-            if (totalLowestElem) totalLowestElem.textContent = `€ ${formatPrice(totalLowestSum)}`;
-            if (totalCountElem) totalCountElem.textContent = offertes.length;
-            if (activeCatElem) activeCatElem.textContent = activeCatCount;
+            document.getElementById('totalLowestPrice').textContent = `€ ${formatPrice(totalLowestSum)}`;
+            document.getElementById('totalCount').textContent = offertes.length;
+            document.getElementById('activeCategoryCount').textContent = activeCatCount;
         }
 
         function updateCategorySelect() {
             const select = document.getElementById('offerteCategory');
-            if (select) {
-                select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            }
+            select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         function openModal() {
@@ -514,70 +454,6 @@
 
         function closeCategoryModal() {
             document.getElementById('categoryModal').classList.add('hidden');
-        }
-
-        function openDetailViewModal(id) {
-            activeDetailOfferteId = id;
-            const off = offertes.find(o => o.id === id);
-            if (!off) return;
-
-            document.getElementById('detailViewCategory').textContent = off.category || 'CATEGORIE';
-            document.getElementById('detailViewCompany').textContent = off.company || 'Onbekend';
-            document.getElementById('detailViewStatus').textContent = off.status || 'Lopend';
-            
-            const inclBtw = getInclBtwAmount(off);
-            document.getElementById('detailViewPrice').textContent = inclBtw > 0 ? `€ ${formatPrice(inclBtw)}` : 'Nog onbekend';
-            document.getElementById('detailViewMailDate').textContent = off.mailDate || 'Niet ingevuld';
-            document.getElementById('detailViewReplyDate').textContent = off.replyDate || 'Geen reactie';
-            document.getElementById('detailViewDesc').textContent = off.notes || 'Geen extra beschrijving.';
-
-            renderComments(off.comments || []);
-            document.getElementById('detailViewModal').classList.remove('hidden');
-        }
-
-        function closeDetailViewModal() {
-            document.getElementById('detailViewModal').classList.add('hidden');
-            activeDetailOfferteId = null;
-        }
-
-        function renderComments(comments) {
-            const container = document.getElementById('detailCommentsList');
-            if (!container) return;
-            if (!comments || comments.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 italic">Nog geen notities toegevoegd door Brandon of Dorien.</p>';
-                return;
-            }
-
-            container.innerHTML = comments.map(c => `
-                <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
-                    <div class="flex justify-between font-semibold text-slate-700 mb-1">
-                        <span class="${c.user === 'Brandon' ? 'text-indigo-600' : 'text-pink-600'}">${escapeHtml(c.user)}</span>
-                        <span class="text-slate-400 font-normal text-[10px]">${c.date || ''}</span>
-                    </div>
-                    <p class="text-slate-600">${escapeHtml(c.text)}</p>
-                </div>
-            `).join('');
-        }
-
-        async function addComment() {
-            const input = document.getElementById('newCommentInput');
-            const text = input ? input.value.trim() : '';
-            if (!text || !activeDetailOfferteId) return;
-
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('nl-BE') + ' ' + now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-
-            const newComment = {
-                text: text,
-                user: currentUser,
-                date: dateStr
-            };
-
-            await db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(activeDetailOfferteId).update({
-                comments: firebase.firestore.FieldValue.arrayUnion(newComment)
-            });
-
-            if (input) input.value = '';
         }
 
         function saveOfferte(e) {
@@ -615,7 +491,6 @@
             if (id) {
                 db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(id).update(data);
             } else {
-                data.comments = [];
                 db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').add(data);
             }
 
