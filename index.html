@@ -229,7 +229,7 @@
         </div>
     </div>
 
-    <!-- NIEUW: MODAL DETAILVENSTER & GEDEELDE NOTITIES -->
+    <!-- MODAL: DETAILVENSTER & GEDEELDE NOTITIES -->
     <div id="detailViewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
@@ -320,9 +320,16 @@
             setUser(currentUser);
         });
 
+        // GEWICHTIGE EN EXPLICITE LOGIN AFHANDELING
         function handleLogin(e) {
-            e.preventDefault();
-            const input = document.getElementById('secAnswer').value.trim().toLowerCase();
+            if (e) e.preventDefault();
+            
+            const inputElem = document.getElementById('secAnswer');
+            if (!inputElem) return;
+
+            const input = inputElem.value.trim().toLowerCase();
+            
+            // Controleert of het ingevulde woord 'flavius' is
             if (input === 'flavius') {
                 document.getElementById('loginError').classList.add('hidden');
                 showApp();
@@ -374,7 +381,6 @@
                     }));
                     renderUI();
 
-                    // Als het detailvenster open staat, verversen we ook de notities direct live!
                     if (activeDetailOfferteId) {
                         openDetailViewModal(activeDetailOfferteId);
                     }
@@ -484,7 +490,6 @@
                                         ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
                                     </div>
                                     <div class="flex gap-2 mt-1 items-center">
-                                        <!-- NIEUWE KNOP: Details & Notities Modal -->
                                         <button onclick="openDetailViewModal('${off.id}')" title="Bekijk details & notities" class="px-2.5 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
                                             <i class="fa-solid fa-comments"></i>
                                             <span>${commentCount}</span>
@@ -544,7 +549,6 @@
             document.getElementById('categoryModal').classList.add('hidden');
         }
 
-        // --- NIEUWE FUNCTIES VOOR DETAILVIEW & NOTITIES ---
         function openDetailViewModal(id) {
             activeDetailOfferteId = id;
             const off = offertes.find(o => o.id === id);
@@ -643,7 +647,7 @@
             if (id) {
                 db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(id).update(data);
             } else {
-                data.comments = []; // Nieuwe offertes krijgen lege notities array
+                data.comments = [];
                 db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').add(data);
             }
 
