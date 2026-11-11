@@ -26,13 +26,13 @@
                 <p class="text-sm text-slate-500 mt-1">Beantwoord de beveiligingsvraag om verder te gaan.</p>
             </div>
             
-            <form onsubmit="verifieerAntwoord(event)" class="space-y-4">
+            <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-1">Beveiligingsvraag:</label>
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium text-sm mb-3">
                         Welke merk gevelsteen hebben wij?
                     </div>
-                    <input type="text" id="secAnswer" placeholder="Typ het antwoord..." required
+                    <input type="text" id="secAnswer" required placeholder="Typ het antwoord..." 
                         class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800">
                     <p id="loginError" class="text-red-500 text-xs mt-1 hidden font-semibold">Onjuist antwoord. Probeer opnieuw.</p>
                 </div>
@@ -68,8 +68,8 @@
                         </button>
                     </div>
 
-                    <button type="button" onclick="location.reload()" title="Herladen" class="text-slate-400 hover:text-indigo-600 p-2 text-lg">
-                        <i class="fa-solid fa-rotate-right"></i>
+                    <button type="button" onclick="logout()" title="Vergrendel app" class="text-slate-400 hover:text-red-500 p-2 text-lg">
+                        <i class="fa-solid fa-right-from-bracket"></i>
                     </button>
                 </div>
             </div>
@@ -217,6 +217,63 @@
         </div>
     </div>
 
+    <!-- MODAL: DETAILVENSTER & GEDEELDE NOTITIES -->
+    <div id="detailViewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <div>
+                    <span id="detailViewCategory" class="text-xs font-bold text-indigo-600 uppercase tracking-wider">CATEGORIE</span>
+                    <h3 id="detailViewCompany" class="text-xl font-bold text-slate-800">Bedrijfsnaam</h3>
+                </div>
+                <button type="button" onclick="closeDetailViewModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm">
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div>
+                        <span class="text-xs text-slate-400 block">Status:</span>
+                        <span id="detailViewStatus" class="font-semibold text-slate-700">--</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">Prijs (Incl. BTW):</span>
+                        <span id="detailViewPrice" class="font-bold text-indigo-600">--</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">Mail Uitgestuurd:</span>
+                        <span id="detailViewMailDate" class="font-medium text-slate-600">--</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">Reactie Ontvangen:</span>
+                        <span id="detailViewReplyDate" class="font-medium text-slate-600">--</span>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Beschrijving:</span>
+                    <p id="detailViewDesc" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">--</p>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100">
+                    <h4 class="text-sm font-bold text-slate-800 mb-2 flex items-center justify-between">
+                        <span><i class="fa-solid fa-comments text-indigo-500 mr-2"></i>Gedeelde Notities Logboek</span>
+                        <span class="text-[10px] text-slate-400 font-normal">(Brandon & Dorien)</span>
+                    </h4>
+
+                    <div id="detailCommentsList" class="space-y-2 mb-3 max-h-48 overflow-y-auto pr-1"></div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="newCommentInput" placeholder="Typ een opmerking..." class="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <button type="button" onclick="addComment()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JAVASCRIPT LOGICA -->
     <script>
         const firebaseConfig = {
@@ -237,8 +294,13 @@
         let currentUser = localStorage.getItem('appUser') || 'Brandon';
         let categories = DEFAULT_CATEGORIES;
         let offertes = [];
+        let activeDetailOfferteId = null;
 
-        function verifieerAntwoord(e) {
+        window.addEventListener('DOMContentLoaded', () => {
+            setUser(currentUser);
+        });
+
+        function handleLogin(e) {
             if (e) e.preventDefault();
             const inputVal = document.getElementById('secAnswer').value.trim().toLowerCase();
             const errorElem = document.getElementById('loginError');
@@ -247,11 +309,14 @@
                 if (errorElem) errorElem.classList.add('hidden');
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('appContent').classList.remove('hidden');
-                setUser(currentUser);
                 setupRealtimeSync();
             } else {
                 if (errorElem) errorElem.classList.remove('hidden');
             }
+        }
+
+        function logout() {
+            location.reload();
         }
 
         function setUser(user) {
@@ -286,6 +351,10 @@
                         ...doc.data()
                     }));
                     renderUI();
+
+                    if (activeDetailOfferteId) {
+                        openDetailViewModal(activeDetailOfferteId);
+                    }
                 });
         }
 
@@ -366,6 +435,7 @@
                         }
 
                         const isExcl = off.btwType === 'Excl. BTW';
+                        const commentCount = off.comments ? off.comments.length : 0;
 
                         return `
                             <div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${isCheapest ? 'bg-emerald-50/40' : ''}">
@@ -394,9 +464,14 @@
                                         }
                                         ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
                                     </div>
-                                    <div class="flex gap-2 mt-1">
-                                        <button type="button" onclick="editOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen"></i></button>
-                                        <button type="button" onclick="deleteOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                                    <div class="flex gap-2 mt-1 items-center">
+                                        <button type="button" onclick="openDetailViewModal('${off.id}')" title="Bekijk details & notities" class="px-2.5 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                                            <i class="fa-solid fa-comments"></i>
+                                            <span>${commentCount}</span>
+                                        </button>
+
+                                        <button type="button" onclick="editOfferte('${off.id}')" title="Bewerken" class="text-xs text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen"></i></button>
+                                        <button type="button" onclick="deleteOfferte('${off.id}')" title="Verwijderen" class="text-xs text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -453,6 +528,70 @@
             document.getElementById('categoryModal').classList.add('hidden');
         }
 
+        function openDetailViewModal(id) {
+            activeDetailOfferteId = id;
+            const off = offertes.find(o => o.id === id);
+            if (!off) return;
+
+            document.getElementById('detailViewCategory').textContent = off.category || 'CATEGORIE';
+            document.getElementById('detailViewCompany').textContent = off.company || 'Onbekend';
+            document.getElementById('detailViewStatus').textContent = off.status || 'Lopend';
+            
+            const inclBtw = getInclBtwAmount(off);
+            document.getElementById('detailViewPrice').textContent = inclBtw > 0 ? `€ ${formatPrice(inclBtw)}` : 'Nog onbekend';
+            document.getElementById('detailViewMailDate').textContent = off.mailDate || 'Niet ingevuld';
+            document.getElementById('detailViewReplyDate').textContent = off.replyDate || 'Geen reactie';
+            document.getElementById('detailViewDesc').textContent = off.notes || 'Geen extra beschrijving.';
+
+            renderComments(off.comments || []);
+            document.getElementById('detailViewModal').classList.remove('hidden');
+        }
+
+        function closeDetailViewModal() {
+            document.getElementById('detailViewModal').classList.add('hidden');
+            activeDetailOfferteId = null;
+        }
+
+        function renderComments(comments) {
+            const container = document.getElementById('detailCommentsList');
+            if (!container) return;
+            if (!comments || comments.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 italic">Nog geen notities toegevoegd door Brandon of Dorien.</p>';
+                return;
+            }
+
+            container.innerHTML = comments.map(c => `
+                <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
+                    <div class="flex justify-between font-semibold text-slate-700 mb-1">
+                        <span class="${c.user === 'Brandon' ? 'text-indigo-600' : 'text-pink-600'}">${escapeHtml(c.user)}</span>
+                        <span class="text-slate-400 font-normal text-[10px]">${c.date || ''}</span>
+                    </div>
+                    <p class="text-slate-600">${escapeHtml(c.text)}</p>
+                </div>
+            `).join('');
+        }
+
+        async function addComment() {
+            const input = document.getElementById('newCommentInput');
+            const text = input ? input.value.trim() : '';
+            if (!text || !activeDetailOfferteId) return;
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('nl-BE') + ' ' + now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+
+            const newComment = {
+                text: text,
+                user: currentUser,
+                date: dateStr
+            };
+
+            await db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(activeDetailOfferteId).update({
+                comments: firebase.firestore.FieldValue.arrayUnion(newComment)
+            });
+
+            if (input) input.value = '';
+        }
+
         function saveOfferte(e) {
             e.preventDefault();
             const id = document.getElementById('offerteId').value;
@@ -488,6 +627,7 @@
             if (id) {
                 db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').doc(id).update(data);
             } else {
+                data.comments = [];
                 db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes').add(data);
             }
 
