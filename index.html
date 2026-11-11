@@ -26,7 +26,7 @@
                 <p class="text-sm text-slate-500 mt-1">Beantwoord de beveiligingsvraag om verder te gaan.</p>
             </div>
             
-            <form onsubmit="return voerLoginUit(event)" class="space-y-4">
+            <form onsubmit="return handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-1">Beveiligingsvraag:</label>
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium text-sm mb-3">
@@ -276,23 +276,6 @@
 
     <!-- JAVASCRIPT LOGICA -->
     <script>
-        // LOGIN AFHANDELING 
-        function voerLoginUit(evt) {
-            evt.preventDefault();
-            var gegevenAntwoord = document.getElementById('secAnswer').value.trim().toLowerCase();
-            
-            if (gegevenAntwoord === 'flavius') {
-                document.getElementById('loginError').classList.add('hidden');
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContent').classList.remove('hidden');
-                setupRealtimeSync();
-                return false;
-            } else {
-                document.getElementById('loginError').classList.remove('hidden');
-                return false;
-            }
-        }
-
         const firebaseConfig = {
             apiKey: "AIzaSyDv0NvRKi6bSsjW3y3iYKrMDZn1s03tDMc",
             authDomain: "offertes-brandon-dorien.firebaseapp.com",
@@ -316,6 +299,26 @@
         window.addEventListener('DOMContentLoaded', function() {
             setUser(currentUser);
         });
+
+        // LOGIN LOGICA HIER DRECT GEKOPPELD AAN HANDLELOGIN
+        function handleLogin(e) {
+            if (e) e.preventDefault();
+            
+            const inputElem = document.getElementById('secAnswer');
+            if (!inputElem) return false;
+
+            const input = inputElem.value.trim().toLowerCase();
+            
+            if (input === 'flavius') {
+                document.getElementById('loginError').classList.add('hidden');
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appContent').classList.remove('hidden');
+                setupRealtimeSync();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+            return false;
+        }
 
         function logout() {
             location.reload();
