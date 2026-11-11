@@ -15,8 +15,8 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-12">
 
-    <!-- LOGIN / BEVEILIGINGSSCHERM -->
-    <div id="loginScreen" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-4">
+    <!-- LOGIN / BEVEILIGINGSSCHERM (VERBORGEN) -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900/95 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
             <div class="text-center mb-6">
                 <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
@@ -44,7 +44,7 @@
     </div>
 
     <!-- MAIN APP CONTENT -->
-    <div id="appContent" class="hidden">
+    <div id="appContent">
         <!-- HEADER -->
         <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -68,8 +68,8 @@
                         </button>
                     </div>
 
-                    <button onclick="logout()" title="Vergrendel app" class="text-slate-400 hover:text-red-500 p-2 text-lg">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+                    <button onclick="logout()" title="Herladen" class="text-slate-400 hover:text-red-500 p-2 text-lg">
+                        <i class="fa-solid fa-rotate-right"></i>
                     </button>
                 </div>
             </div>
@@ -276,30 +276,6 @@
 
     <!-- JAVASCRIPT LOGICA -->
     <script>
-        // LOGIN FORM EVENT LISTENER (VEILIG & RUSTIG INGESTELD)
-        document.addEventListener('DOMContentLoaded', function() {
-            setUser(currentUser);
-            
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const inputElem = document.getElementById('secAnswer');
-                    if (!inputElem) return;
-
-                    const input = inputElem.value.trim().toLowerCase();
-                    if (input === 'flavius') {
-                        document.getElementById('loginError').classList.add('hidden');
-                        document.getElementById('loginScreen').classList.add('hidden');
-                        document.getElementById('appContent').classList.remove('hidden');
-                        setupRealtimeSync();
-                    } else {
-                        document.getElementById('loginError').classList.remove('hidden');
-                    }
-                });
-            }
-        });
-
         const firebaseConfig = {
             apiKey: "AIzaSyDv0NvRKi6bSsjW3y3iYKrMDZn1s03tDMc",
             authDomain: "offertes-brandon-dorien.firebaseapp.com",
@@ -319,6 +295,11 @@
         let categories = [];
         let offertes = [];
         let activeDetailOfferteId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setUser(currentUser);
+            setupRealtimeSync();
+        });
 
         function logout() {
             location.reload();
@@ -376,8 +357,11 @@
             if (!container) return;
             container.innerHTML = '';
 
-            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
+            const searchInput = document.getElementById('searchInput');
+            const statusFilterInput = document.getElementById('statusFilter');
+
+            const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            const statusFilter = statusFilterInput ? statusFilterInput.value : 'ALLE';
 
             let totalLowestSum = 0;
             let activeCatCount = 0;
@@ -493,9 +477,13 @@
                 container.appendChild(catCard);
             });
 
-            document.getElementById('totalLowestPrice').textContent = `€ ${formatPrice(totalLowestSum)}`;
-            document.getElementById('totalCount').textContent = offertes.length;
-            document.getElementById('activeCategoryCount').textContent = activeCatCount;
+            const totalLowestElem = document.getElementById('totalLowestPrice');
+            const totalCountElem = document.getElementById('totalCount');
+            const activeCatElem = document.getElementById('activeCategoryCount');
+
+            if (totalLowestElem) totalLowestElem.textContent = `€ ${formatPrice(totalLowestSum)}`;
+            if (totalCountElem) totalCountElem.textContent = offertes.length;
+            if (activeCatElem) activeCatElem.textContent = activeCatCount;
         }
 
         function updateCategorySelect() {
@@ -573,7 +561,7 @@
 
         async function addComment() {
             const input = document.getElementById('newCommentInput');
-            const text = input.value.trim();
+            const text = input ? input.value.trim() : '';
             if (!text || !activeDetailOfferteId) return;
 
             const now = new Date();
@@ -589,7 +577,7 @@
                 comments: firebase.firestore.FieldValue.arrayUnion(newComment)
             });
 
-            input.value = '';
+            if (input) input.value = '';
         }
 
         function saveOfferte(e) {
