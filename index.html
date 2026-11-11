@@ -15,8 +15,36 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-12">
 
+    <!-- LOGIN / BEVEILIGINGSSCHERM -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
+            <div class="text-center mb-6">
+                <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">Toegang Beveiligen</h2>
+                <p class="text-sm text-slate-500 mt-1">Beantwoord de beveiligingsvraag om verder te gaan.</p>
+            </div>
+            
+            <form onsubmit="verifieerAntwoord(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Beveiligingsvraag:</label>
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium text-sm mb-3">
+                        Welke merk gevelsteen hebben wij?
+                    </div>
+                    <input type="text" id="secAnswer" placeholder="Typ het antwoord..." required
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800">
+                    <p id="loginError" class="text-red-500 text-xs mt-1 hidden font-semibold">Onjuist antwoord. Probeer opnieuw.</p>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-200 shadow-md">
+                    Open App <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- MAIN APP CONTENT -->
-    <div id="appContent">
+    <div id="appContent" class="hidden">
         <!-- HEADER -->
         <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -191,7 +219,7 @@
 
     <!-- JAVASCRIPT LOGICA -->
     <script>
-        var firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyDv0NvRKi6bSsjW3y3iYKrMDZn1s03tDMc",
             authDomain: "offertes-brandon-dorien.firebaseapp.com",
             projectId: "offertes-brandon-dorien",
@@ -201,21 +229,37 @@
         };
 
         firebase.initializeApp(firebaseConfig);
-        var db = firebase.firestore();
+        const db = firebase.firestore();
 
-        var SHARED_ROOM_ID = "BrandonDorien2026";
-        var DEFAULT_CATEGORIES = ["VLOER", "RAMEN", "KEUKEN", "CHAPE", "PLEISTERWERKEN"];
+        const SHARED_ROOM_ID = "BrandonDorien2026";
+        const DEFAULT_CATEGORIES = ["VLOER", "RAMEN", "KEUKEN", "CHAPE", "PLEISTERWERKEN"];
         
-        var currentUser = localStorage.getItem('appUser') || 'Brandon';
-        var categories = DEFAULT_CATEGORIES;
-        var offertes = [];
+        let currentUser = localStorage.getItem('appUser') || 'Brandon';
+        let categories = DEFAULT_CATEGORIES;
+        let offertes = [];
+
+        function verifieerAntwoord(e) {
+            if (e) e.preventDefault();
+            const inputVal = document.getElementById('secAnswer').value.trim().toLowerCase();
+            const errorElem = document.getElementById('loginError');
+
+            if (inputVal === 'flavius') {
+                if (errorElem) errorElem.classList.add('hidden');
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appContent').classList.remove('hidden');
+                setUser(currentUser);
+                setupRealtimeSync();
+            } else {
+                if (errorElem) errorElem.classList.remove('hidden');
+            }
+        }
 
         function setUser(user) {
             currentUser = user;
             localStorage.setItem('appUser', user);
             
-            var btnB = document.getElementById('btnBrandon');
-            var btnD = document.getElementById('btnDorien');
+            const btnB = document.getElementById('btnBrandon');
+            const btnD = document.getElementById('btnDorien');
             
             if (user === 'Brandon') {
                 if (btnB) btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
@@ -228,21 +272,19 @@
 
         function setupRealtimeSync() {
             db.collection('rooms').doc(SHARED_ROOM_ID).collection('categories')
-                .onSnapshot(function(snapshot) {
-                    var customCats = snapshot.docs.map(function(doc) { return doc.data().name; });
-                    var combined = DEFAULT_CATEGORIES.concat(customCats);
-                    categories = combined.filter(function(item, pos) { return combined.indexOf(item) === pos; });
+                .onSnapshot(snapshot => {
+                    const customCats = snapshot.docs.map(doc => doc.data().name);
+                    categories = Array.from(new Set([...DEFAULT_CATEGORIES, ...customCats]));
                     updateCategorySelect();
                     renderUI();
                 });
 
             db.collection('rooms').doc(SHARED_ROOM_ID).collection('offertes')
-                .onSnapshot(function(snapshot) {
-                    offertes = snapshot.docs.map(function(doc) {
-                        var data = doc.data();
-                        data.id = doc.id;
-                        return data;
-                    });
+                .onSnapshot(snapshot => {
+                    offertes = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
                     renderUI();
                 });
         }
@@ -256,133 +298,136 @@
         }
 
         function renderUI() {
-            var container = document.getElementById('categoriesList');
+            const container = document.getElementById('categoriesList');
             if (!container) return;
             container.innerHTML = '';
 
-            var searchInput = document.getElementById('searchInput');
-            var statusFilterInput = document.getElementById('statusFilter');
+            const searchInput = document.getElementById('searchInput');
+            const statusFilterInput = document.getElementById('statusFilter');
 
-            var searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
-            var statusFilter = statusFilterInput ? statusFilterInput.value : 'ALLE';
+            const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            const statusFilter = statusFilterInput ? statusFilterInput.value : 'ALLE';
 
-            var totalLowestSum = 0;
-            var activeCatCount = 0;
+            let totalLowestSum = 0;
+            let activeCatCount = 0;
 
-            categories.forEach(function(cat) {
-                var catOffertes = offertes.filter(function(o) { return o.category === cat; });
+            categories.forEach(cat => {
+                let catOffertes = offertes.filter(o => o.category === cat);
 
                 if (searchVal) {
-                    catOffertes = catOffertes.filter(function(o) {
-                        return (o.company && o.company.toLowerCase().indexOf(searchVal) !== -1) || 
-                               (o.notes && o.notes.toLowerCase().indexOf(searchVal) !== -1);
-                    });
+                    catOffertes = catOffertes.filter(o => 
+                        (o.company && o.company.toLowerCase().includes(searchVal)) || 
+                        (o.notes && o.notes.toLowerCase().includes(searchVal))
+                    );
                 }
 
                 if (statusFilter !== 'ALLE') {
-                    catOffertes = catOffertes.filter(function(o) { return o.status === statusFilter; });
+                    catOffertes = catOffertes.filter(o => o.status === statusFilter);
                 }
 
-                catOffertes.sort(function(a, b) {
-                    var priceA = getInclBtwAmount(a);
-                    var priceB = getInclBtwAmount(b);
+                catOffertes.sort((a, b) => {
+                    const priceA = getInclBtwAmount(a);
+                    const priceB = getInclBtwAmount(b);
                     if (priceA === 0) return 1;
                     if (priceB === 0) return -1;
                     return priceA - priceB;
                 });
 
-                var validAmounts = catOffertes.filter(function(o) { return getInclBtwAmount(o) > 0; });
+                const validAmounts = catOffertes.filter(o => getInclBtwAmount(o) > 0);
 
                 if (validAmounts.length > 0) {
                     activeCatCount++;
                     totalLowestSum += getInclBtwAmount(validAmounts[0]);
                 }
 
-                var catCard = document.createElement('div');
+                const catCard = document.createElement('div');
                 catCard.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden";
                 
-                var offertesHTML = '';
+                let offertesHTML = '';
                 if (catOffertes.length === 0) {
-                    offertesHTML = '<div class="p-4 text-center text-xs text-slate-400 italic">Geen offertes of aanvragen gevonden.</div>';
+                    offertesHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Geen offertes of aanvragen gevonden.</div>`;
                 } else {
-                    offertesHTML = catOffertes.map(function(off) {
-                        var hasAmount = off.amount && off.amount > 0;
-                        var inclBtw = getInclBtwAmount(off);
-                        var lowestInclBtw = validAmounts.length > 0 ? getInclBtwAmount(validAmounts[0]) : 0;
+                    offertesHTML = catOffertes.map(off => {
+                        const hasAmount = off.amount && off.amount > 0;
+                        const inclBtw = getInclBtwAmount(off);
+                        const lowestInclBtw = validAmounts.length > 0 ? getInclBtwAmount(validAmounts[0]) : 0;
 
-                        var isCheapest = hasAmount && validAmounts.length > 1 && inclBtw === lowestInclBtw;
-                        var diffWithCheapest = (hasAmount && validAmounts.length > 0 && inclBtw > lowestInclBtw) 
+                        const isCheapest = hasAmount && validAmounts.length > 1 && inclBtw === lowestInclBtw;
+                        const diffWithCheapest = (hasAmount && validAmounts.length > 0 && inclBtw > lowestInclBtw) 
                             ? (inclBtw - lowestInclBtw) : 0;
 
-                        var statusBadge = '';
+                        let statusBadge = '';
                         if (off.status === 'Lopend') {
-                            statusBadge = '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-paper-plane mr-1"></i>Mail verzonden (Lopend)</span>';
+                            statusBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-paper-plane mr-1"></i>Mail verzonden (Lopend)</span>`;
                         } else if (off.status === 'Reactie ontvangen') {
-                            statusBadge = '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-check mr-1"></i>Reactie ontvangen</span>';
+                            statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-check mr-1"></i>Reactie ontvangen</span>`;
                         } else if (off.status === 'Afgerond') {
-                            statusBadge = '<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-flag-checkered mr-1"></i>Gekozen / Afgerond</span>';
+                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-flag-checkered mr-1"></i>Gekozen / Afgerond</span>`;
                         }
 
-                        var isExcl = off.btwType === 'Excl. BTW';
+                        const isExcl = off.btwType === 'Excl. BTW';
 
-                        return '<div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ' + (isCheapest ? 'bg-emerald-50/40' : '') + '">' +
-                            '<div class="space-y-1">' +
-                                '<div class="flex items-center gap-2 flex-wrap">' +
-                                    '<span class="font-bold text-slate-800">' + escapeHtml(off.company) + '</span>' +
-                                    statusBadge +
-                                    (isCheapest ? '<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-trophy mr-1"></i>Goedkoopste</span>' : '') +
-                                '</div>' +
-                                '<p class="text-xs text-slate-400">' +
-                                    (off.mailDate ? '<span class="text-indigo-600 font-medium mr-2"><i class="fa-regular fa-paper-plane mr-1"></i>Gemaild: ' + off.mailDate + '</span>' : '') +
-                                    (off.replyDate ? '<span class="text-emerald-600 font-medium mr-2"><i class="fa-regular fa-envelope-open mr-1"></i>Antwoord: ' + off.replyDate + '</span>' : '') +
-                                    'Toegevoegd door <span class="font-semibold text-slate-600">' + escapeHtml(off.user) + '</span>' +
-                                '</p>' +
-                                (off.notes ? '<p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">' + escapeHtml(off.notes) + '</p>' : '') +
-                            '</div>' +
-                            '<div class="flex sm:flex-col items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">' +
-                                '<div class="text-right">' +
-                                    (hasAmount 
-                                        ? '<div class="text-lg font-extrabold ' + (isCheapest ? 'text-emerald-600' : 'text-slate-800') + '">€ ' + formatPrice(inclBtw) + ' <span class="text-[10px] font-normal text-slate-500">(Incl. BTW)</span></div>' +
-                                          (isExcl ? '<div class="text-xs text-slate-400">€ ' + formatPrice(off.amount) + ' (Excl. BTW)</div>' : '')
-                                        : '<span class="text-xs font-semibold text-slate-400 italic">Prijs nog onbekend</span>'
-                                    ) +
-                                    (diffWithCheapest > 0 ? '<div class="text-[10px] text-red-500 font-medium">+ € ' + formatPrice(diffWithCheapest) + ' duurder</div>' : '') +
-                                '</div>' +
-                                '<div class="flex gap-2 mt-1">' +
-                                    '<button type="button" onclick="editOfferte(\'' + off.id + '\')" class="text-xs text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button>' +
-                                    '<button type="button" onclick="deleteOfferte(\'' + off.id + '\')" class="text-xs text-slate-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>';
+                        return `
+                            <div class="p-4 border-b last:border-0 border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${isCheapest ? 'bg-emerald-50/40' : ''}">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-bold text-slate-800">${escapeHtml(off.company)}</span>
+                                        ${statusBadge}
+                                        ${isCheapest ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-trophy mr-1"></i>Goedkoopste</span>` : ''}
+                                    </div>
+                                    <p class="text-xs text-slate-400">
+                                        ${off.mailDate ? `<span class="text-indigo-600 font-medium mr-2"><i class="fa-regular fa-paper-plane mr-1"></i>Gemaild: ${off.mailDate}</span>` : ''}
+                                        ${off.replyDate ? `<span class="text-emerald-600 font-medium mr-2"><i class="fa-regular fa-envelope-open mr-1"></i>Antwoord: ${off.replyDate}</span>` : ''}
+                                        Toegevoegd door <span class="font-semibold text-slate-600">${escapeHtml(off.user)}</span>
+                                    </p>
+                                    ${off.notes ? `<p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${escapeHtml(off.notes)}</p>` : ''}
+                                </div>
+
+                                <div class="flex sm:flex-col items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+                                    <div class="text-right">
+                                        ${hasAmount 
+                                            ? `
+                                                <div class="text-lg font-extrabold ${isCheapest ? 'text-emerald-600' : 'text-slate-800'}">€ ${formatPrice(inclBtw)} <span class="text-[10px] font-normal text-slate-500">(Incl. BTW)</span></div>
+                                                ${isExcl ? `<div class="text-xs text-slate-400">€ ${formatPrice(off.amount)} (Excl. BTW)</div>` : ''}
+                                              ` 
+                                            : `<span class="text-xs font-semibold text-slate-400 italic">Prijs nog onbekend</span>`
+                                        }
+                                        ${diffWithCheapest > 0 ? `<div class="text-[10px] text-red-500 font-medium">+ € ${formatPrice(diffWithCheapest)} duurder</div>` : ''}
+                                    </div>
+                                    <div class="flex gap-2 mt-1">
+                                        <button type="button" onclick="editOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen"></i></button>
+                                        <button type="button" onclick="deleteOfferte('${off.id}')" class="text-xs text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
                     }).join('');
                 }
 
-                catCard.innerHTML = 
-                    '<div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">' +
-                        '<h3 class="font-bold text-sm text-slate-700 tracking-wide"><i class="fa-solid fa-folder text-indigo-500 mr-2"></i>' + cat + '</h3>' +
-                        '<span class="text-xs font-semibold text-slate-400 bg-white px-2 py-1 rounded border">' + catOffertes.length + ' items</span>' +
-                    '</div>' +
-                    '<div class="divide-y border-slate-100">' + offertesHTML + '</div>';
-                
+                catCard.innerHTML = `
+                    <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-sm text-slate-700 tracking-wide"><i class="fa-solid fa-folder text-indigo-500 mr-2"></i>${cat}</h3>
+                        <span class="text-xs font-semibold text-slate-400 bg-white px-2 py-1 rounded border">${catOffertes.length} items</span>
+                    </div>
+                    <div class="divide-y border-slate-100">
+                        ${offertesHTML}
+                    </div>
+                `;
                 container.appendChild(catCard);
             });
 
-            var totalLowestElem = document.getElementById('totalLowestPrice');
-            var totalCountElem = document.getElementById('totalCount');
-            var activeCatElem = document.getElementById('activeCategoryCount');
+            const totalLowestElem = document.getElementById('totalLowestPrice');
+            const totalCountElem = document.getElementById('totalCount');
+            const activeCatElem = document.getElementById('activeCategoryCount');
 
-            if (totalLowestElem) totalLowestElem.textContent = '€ ' + formatPrice(totalLowestSum);
+            if (totalLowestElem) totalLowestElem.textContent = `€ ${formatPrice(totalLowestSum)}`;
             if (totalCountElem) totalCountElem.textContent = offertes.length;
             if (activeCatElem) activeCatElem.textContent = activeCatCount;
         }
 
         function updateCategorySelect() {
-            var select = document.getElementById('offerteCategory');
-            if (select) {
-                select.innerHTML = categories.map(function(c) {
-                    return '<option value="' + c + '">' + c + '</option>';
-                }).join('');
-            }
+            const select = document.getElementById('offerteCategory');
+            if (select) select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         function openModal() {
@@ -410,30 +455,30 @@
 
         function saveOfferte(e) {
             e.preventDefault();
-            var id = document.getElementById('offerteId').value;
-            var category = document.getElementById('offerteCategory').value;
-            var company = document.getElementById('offerteCompany').value.trim();
-            var status = document.getElementById('offerteStatus').value;
-            var mailDate = document.getElementById('offerteMailDate').value;
-            var replyDate = document.getElementById('offerteReplyDate').value;
-            var rawAmount = document.getElementById('offerteAmount').value;
-            var amount = rawAmount ? parseFloat(rawAmount) : null;
-            var btwType = document.getElementById('offerteBtwType').value;
-            var notes = document.getElementById('offerteNotes').value.trim();
+            const id = document.getElementById('offerteId').value;
+            const category = document.getElementById('offerteCategory').value;
+            const company = document.getElementById('offerteCompany').value.trim();
+            const status = document.getElementById('offerteStatus').value;
+            const mailDate = document.getElementById('offerteMailDate').value;
+            const replyDate = document.getElementById('offerteReplyDate').value;
+            const rawAmount = document.getElementById('offerteAmount').value;
+            const amount = rawAmount ? parseFloat(rawAmount) : null;
+            const btwType = document.getElementById('offerteBtwType').value;
+            const notes = document.getElementById('offerteNotes').value.trim();
 
-            var now = new Date();
-            var dateStr = now.toLocaleDateString('nl-BE');
-            var timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('nl-BE');
+            const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
 
-            var data = {
-                category: category,
-                company: company,
-                status: status,
+            const data = {
+                category,
+                company,
+                status,
                 mailDate: mailDate ? mailDate.split('-').reverse().join('/') : '',
                 replyDate: replyDate ? replyDate.split('-').reverse().join('/') : '',
-                amount: amount,
-                btwType: btwType,
-                notes: notes,
+                amount,
+                btwType,
+                notes,
                 user: currentUser,
                 date: dateStr,
                 time: timeStr,
@@ -450,7 +495,7 @@
         }
 
         function editOfferte(id) {
-            var off = offertes.filter(function(o) { return o.id === id; })[0];
+            const off = offertes.find(o => o.id === id);
             if (!off) return;
 
             document.getElementById('offerteId').value = off.id;
@@ -459,16 +504,16 @@
             document.getElementById('offerteStatus').value = off.status || 'Lopend';
             document.getElementById('offerteBtwType').value = off.btwType || 'Excl. BTW';
             
-            if (off.mailDate && off.mailDate.indexOf('/') !== -1) {
-                var parts = off.mailDate.split('/');
-                document.getElementById('offerteMailDate').value = parts[2] + '-' + parts[1] + '-' + parts[0];
+            if (off.mailDate && off.mailDate.includes('/')) {
+                const parts = off.mailDate.split('/');
+                document.getElementById('offerteMailDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
             } else {
                 document.getElementById('offerteMailDate').value = '';
             }
 
-            if (off.replyDate && off.replyDate.indexOf('/') !== -1) {
-                var partsR = off.replyDate.split('/');
-                document.getElementById('offerteReplyDate').value = partsR[2] + '-' + partsR[1] + '-' + partsR[0];
+            if (off.replyDate && off.replyDate.includes('/')) {
+                const parts = off.replyDate.split('/');
+                document.getElementById('offerteReplyDate').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
             } else {
                 document.getElementById('offerteReplyDate').value = '';
             }
@@ -487,9 +532,9 @@
 
         function saveCategory(e) {
             e.preventDefault();
-            var name = document.getElementById('newCategoryName').value.trim().toUpperCase();
+            const name = document.getElementById('newCategoryName').value.trim().toUpperCase();
             if (name) {
-                db.collection('rooms').doc(SHARED_ROOM_ID).collection('categories').add({ name: name });
+                db.collection('rooms').doc(SHARED_ROOM_ID).collection('categories').add({ name });
                 closeCategoryModal();
             }
         }
@@ -503,10 +548,6 @@
             if (!text) return '';
             return text.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """).replace(/'/g, "'");
         }
-
-        // STARTUP LOGIC
-        setUser(currentUser);
-        setupRealtimeSync();
     </script>
 </body>
 </html>
