@@ -292,11 +292,11 @@
         const DEFAULT_CATEGORIES = ["VLOER", "RAMEN", "KEUKEN", "CHAPE", "PLEISTERWERKEN"];
         
         let currentUser = localStorage.getItem('appUser') || 'Brandon';
-        let categories = DEFAULT_CATEGORIES;
+        let categories = [...DEFAULT_CATEGORIES];
         let offertes = [];
         let activeDetailOfferteId = null;
 
-        window.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', () => {
             setUser(currentUser);
         });
 
@@ -306,12 +306,12 @@
             const errorElem = document.getElementById('loginError');
 
             if (inputVal === 'flavius') {
-                if (errorElem) errorElem.classList.add('hidden');
+                errorElem.classList.add('hidden');
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('appContent').classList.remove('hidden');
                 setupRealtimeSync();
             } else {
-                if (errorElem) errorElem.classList.remove('hidden');
+                errorElem.classList.remove('hidden');
             }
         }
 
@@ -327,11 +327,11 @@
             const btnD = document.getElementById('btnDorien');
             
             if (user === 'Brandon') {
-                if (btnB) btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
-                if (btnD) btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
+                btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
+                btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
             } else {
-                if (btnD) btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
-                if (btnB) btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
+                btnD.className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 text-white shadow-sm";
+                btnB.className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900";
             }
         }
 
@@ -371,11 +371,8 @@
             if (!container) return;
             container.innerHTML = '';
 
-            const searchInput = document.getElementById('searchInput');
-            const statusFilterInput = document.getElementById('statusFilter');
-
-            const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
-            const statusFilter = statusFilterInput ? statusFilterInput.value : 'ALLE';
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
 
             let totalLowestSum = 0;
             let activeCatCount = 0;
@@ -491,13 +488,9 @@
                 container.appendChild(catCard);
             });
 
-            const totalLowestElem = document.getElementById('totalLowestPrice');
-            const totalCountElem = document.getElementById('totalCount');
-            const activeCatElem = document.getElementById('activeCategoryCount');
-
-            if (totalLowestElem) totalLowestElem.textContent = `€ ${formatPrice(totalLowestSum)}`;
-            if (totalCountElem) totalCountElem.textContent = offertes.length;
-            if (activeCatElem) activeCatElem.textContent = activeCatCount;
+            document.getElementById('totalLowestPrice').textContent = `€ ${formatPrice(totalLowestSum)}`;
+            document.getElementById('totalCount').textContent = offertes.length;
+            document.getElementById('activeCategoryCount').textContent = activeCatCount;
         }
 
         function updateCategorySelect() {
@@ -573,7 +566,7 @@
 
         async function addComment() {
             const input = document.getElementById('newCommentInput');
-            const text = input ? input.value.trim() : '';
+            const text = input.value.trim();
             if (!text || !activeDetailOfferteId) return;
 
             const now = new Date();
@@ -589,7 +582,7 @@
                 comments: firebase.firestore.FieldValue.arrayUnion(newComment)
             });
 
-            if (input) input.value = '';
+            input.value = '';
         }
 
         function saveOfferte(e) {
